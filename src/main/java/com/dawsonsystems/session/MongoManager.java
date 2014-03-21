@@ -26,6 +26,8 @@ import org.apache.catalina.session.StandardSession;
 
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,6 +53,7 @@ public class MongoManager implements Manager, Lifecycle {
 
   private Container container;
   private int maxInactiveInterval;
+  private String localHostName;
 
   @Override
   public Container getContainer() {
@@ -260,6 +263,12 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   public void start() throws LifecycleException {
+    try {
+      localHostName = InetAddress.getLocalHost().getHostName();
+    } catch (UnknownHostException e) {
+      log.severe("Local host not found: " + e);
+    }
+
     for (Valve valve : getContainer().getPipeline().getValves()) {
       if (valve instanceof MongoSessionTrackerValve) {
         trackerValve = (MongoSessionTrackerValve) valve;
@@ -425,6 +434,9 @@ public class MongoManager implements Manager, Lifecycle {
       BasicDBObject dbsession = new BasicDBObject();
       dbsession.put("_id", standardsession.getId());
       dbsession.put("data", data);
+      if (localHostName != null) {
+        dbsession.put("lasthost", localHostName);
+      }
       dbsession.put("lastmodified", System.currentTimeMillis());
 
       BasicDBObject query = new BasicDBObject();
