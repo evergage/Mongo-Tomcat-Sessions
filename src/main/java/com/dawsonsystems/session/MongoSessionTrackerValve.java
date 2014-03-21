@@ -54,8 +54,12 @@ public class MongoSessionTrackerValve extends ValveBase {
         if (session.isValid()) {
           log.fine("Request with session completed, saving session " + session.getId());
           if (session.getSession() != null) {
-            log.fine("HTTP Session present, saving " + session.getId());
-            manager.save(session);
+            if (((MongoSession) session).dirty) {
+              log.fine("HTTP Session present, saving " + session.getId());
+              manager.save(session);
+            } else {
+              log.fine("HTTP Session present, but not dirty, not saving " + session.getId());
+            }
           } else {
             log.fine("No HTTP Session present, Not saving " + session.getId());
           }
