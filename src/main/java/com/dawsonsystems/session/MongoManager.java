@@ -498,11 +498,12 @@ public class MongoManager implements Manager, Lifecycle {
       for (String host : hosts) {
         addrs.add(new ServerAddress(host, getPort()));
       }
-      mongo = new Mongo(addrs);
+      mongo = new MongoClient(addrs);
       db = mongo.getDB(getDatabase());
       if (slaveOk) {
-        db.slaveOk();
+        db.setReadPreference(ReadPreference.secondaryPreferred());
       }
+      db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
       getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getMaxInactiveInterval() * 1000) + " session live time");
     } catch (IOException e) {

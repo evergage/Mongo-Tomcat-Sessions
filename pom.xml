@@ -6,7 +6,7 @@
 
     <groupId>com.github.astral303</groupId>
     <artifactId>mongo-store</artifactId>
-    <version>1.6</version>
+    <version>1.6.2</version>
     <licenses>
         <license>
             <name>Apache 2</name>
