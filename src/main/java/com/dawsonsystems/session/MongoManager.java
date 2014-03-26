@@ -40,6 +40,7 @@ public class MongoManager implements Manager, Lifecycle {
   protected static String host = "localhost";
   protected static int port = 27017;
   protected static String database = "sessions";
+  protected static int connectionsPerHost = 5;
   protected Mongo mongo;
   protected DB db;
   protected boolean slaveOk;
@@ -325,6 +326,14 @@ public class MongoManager implements Manager, Lifecycle {
     MongoManager.database = database;
   }
 
+  public static int getConnectionsPerHost() {
+    return connectionsPerHost;
+  }
+
+  public static void setConnectionsPerHost(int connectionsPerHost) {
+    MongoManager.connectionsPerHost = connectionsPerHost;
+  }
+
   public void clear() throws IOException {
     getCollection().drop();
     getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
@@ -498,7 +507,13 @@ public class MongoManager implements Manager, Lifecycle {
       for (String host : hosts) {
         addrs.add(new ServerAddress(host, getPort()));
       }
-      mongo = new MongoClient(addrs);
+
+      mongo = new MongoClient(addrs,
+          MongoClientOptions.builder()
+              .alwaysUseMBeans(true)
+              .connectionsPerHost(connectionsPerHost)
+              .build());
+
       db = mongo.getDB(getDatabase());
       if (slaveOk) {
         db.setReadPreference(ReadPreference.secondaryPreferred());
