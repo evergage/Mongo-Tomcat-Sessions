@@ -102,12 +102,12 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   @Override
-  public int getSessionCounter() {
+  public long getSessionCounter() {
     return 10000000;
   }
 
   @Override
-  public void setSessionCounter(int i) {
+  public void setSessionCounter(long i) {
 
   }
 
@@ -127,12 +127,12 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   @Override
-  public int getExpiredSessions() {
+  public long getExpiredSessions() {
     return 0;
   }
 
   @Override
-  public void setExpiredSessions(int i) {
+  public void setExpiredSessions(long i) {
 
   }
 
@@ -170,7 +170,6 @@ public class MongoManager implements Manager, Lifecycle {
     return 0;
   }
 
-  @Override
   public void setSessionAverageAliveTime(int i) {
 
   }
@@ -542,5 +541,45 @@ public class MongoManager implements Manager, Lifecycle {
       classLoader = loader.getClassLoader();
     }
     serializer.setClassLoader(classLoader);
+  }
+
+  @Override
+  public int getSessionCreateRate() {
+    return 0;
+  }
+
+  @Override
+  public int getSessionExpireRate() {
+    return 0;
+  }
+
+  @Override
+  public void remove(Session session, boolean update) {
+    remove(session);
+  }
+
+  @Override
+  public boolean willAttributeDistribute(String name, Object value) {
+    return true;
+  }
+
+  @Override
+  public void init() throws LifecycleException {
+    // nada
+  }
+
+  @Override
+  public void destroy() throws LifecycleException {
+    // nada
+  }
+
+  @Override
+  public LifecycleState getState() {
+    return db == null ? LifecycleState.NEW : LifecycleState.STARTED;
+  }
+
+  @Override
+  public String getStateName() {
+    return getState().toString();
   }
 }
