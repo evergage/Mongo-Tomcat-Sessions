@@ -41,7 +41,7 @@ public class MongoManager implements Manager, Lifecycle {
   protected static int port = 27017;
   protected static String database = "sessions";
   protected static int connectionsPerHost = 5;
-  protected Mongo mongo;
+  protected MongoClient mongo;
   protected DB db;
   protected boolean slaveOk;
 
@@ -335,7 +335,7 @@ public class MongoManager implements Manager, Lifecycle {
 
   public void clear() throws IOException {
     getCollection().drop();
-    getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
+    getCollection().createIndex(new BasicDBObject("lastmodified", 1));
   }
 
   private DBCollection getCollection() throws IOException {
@@ -509,6 +509,7 @@ public class MongoManager implements Manager, Lifecycle {
 
       mongo = new MongoClient(addrs,
           MongoClientOptions.builder()
+              .description("TomcatMongoSession")
               .alwaysUseMBeans(true)
               .connectionsPerHost(connectionsPerHost)
               .build());
@@ -518,7 +519,7 @@ public class MongoManager implements Manager, Lifecycle {
         db.setReadPreference(ReadPreference.secondaryPreferred());
       }
       db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
-      getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
+      getCollection().createIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getMaxInactiveInterval() * 1000) + " session live time");
     } catch (IOException e) {
       e.printStackTrace();
