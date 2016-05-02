@@ -22,6 +22,7 @@ package com.dawsonsystems.session;
 
 import com.mongodb.*;
 import org.apache.catalina.*;
+import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
 import java.beans.PropertyChangeListener;
@@ -290,11 +291,21 @@ public class MongoManager implements Manager, Lifecycle {
       throw new LifecycleException(e);
     }
     log.info("Will expire sessions after " + getMaxInactiveInterval() + " seconds");
-    initDbConnection();
+    initDbConnection(getPath());
+  }
+
+  private String getPath() {
+    if (container instanceof StandardContext) {
+      return ((StandardContext) container).getPath();
+    } else {
+      return "<Unknown>";
+    }
   }
 
   public void stop() throws LifecycleException {
-    mongo.close();
+    if (mongo != null) {
+      mongo.close();
+    }
   }
 
   public Session findSession(String id) throws IOException {
@@ -497,7 +508,7 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
-  private void initDbConnection() throws LifecycleException {
+  private void initDbConnection(String path) throws LifecycleException {
     try {
       String[] hosts = getHost().split(",");
 
@@ -509,7 +520,7 @@ public class MongoManager implements Manager, Lifecycle {
 
       mongo = new MongoClient(addrs,
           MongoClientOptions.builder()
-              .description("TomcatMongoSession")
+              .description("TomcatMongoSession[path=" + path + "]")
               .alwaysUseMBeans(true)
               .connectionsPerHost(connectionsPerHost)
               .build());
