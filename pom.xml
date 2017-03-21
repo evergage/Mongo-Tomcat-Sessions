@@ -8,7 +8,7 @@
 
     <groupId>com.github.astral303</groupId>
     <artifactId>mongo-store</artifactId>
-    <version>1.6.4</version>
+    <version>1.6.5</version>
     
     <licenses>
         <license>
@@ -18,7 +18,7 @@
     </licenses>
 
     <properties>
-        <mongo-java-driver.version>2.13.2-evg1</mongo-java-driver.version>
+        <mongo-java-driver.version>3.2.2</mongo-java-driver.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

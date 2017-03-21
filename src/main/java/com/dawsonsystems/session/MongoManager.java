@@ -22,6 +22,7 @@ package com.dawsonsystems.session;
 
 import com.mongodb.*;
 import org.apache.catalina.*;
+import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
 import java.beans.PropertyChangeListener;
@@ -41,7 +42,7 @@ public class MongoManager implements Manager, Lifecycle {
   protected static int port = 27017;
   protected static String database = "sessions";
   protected static int connectionsPerHost = 5;
-  protected Mongo mongo;
+  protected MongoClient mongo;
   protected DB db;
   protected boolean slaveOk;
 
@@ -290,11 +291,21 @@ public class MongoManager implements Manager, Lifecycle {
       throw new LifecycleException(e);
     }
     log.info("Will expire sessions after " + getMaxInactiveInterval() + " seconds");
-    initDbConnection();
+    initDbConnection(getPath());
+  }
+
+  private String getPath() {
+    if (container instanceof StandardContext) {
+      return ((StandardContext) container).getPath();
+    } else {
+      return "<Unknown>";
+    }
   }
 
   public void stop() throws LifecycleException {
-    mongo.close();
+    if (mongo != null) {
+      mongo.close();
+    }
   }
 
   public Session findSession(String id) throws IOException {
@@ -335,7 +346,7 @@ public class MongoManager implements Manager, Lifecycle {
 
   public void clear() throws IOException {
     getCollection().drop();
-    getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
+    getCollection().createIndex(new BasicDBObject("lastmodified", 1));
   }
 
   private DBCollection getCollection() throws IOException {
@@ -497,7 +508,7 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
-  private void initDbConnection() throws LifecycleException {
+  private void initDbConnection(String path) throws LifecycleException {
     try {
       String[] hosts = getHost().split(",");
 
@@ -509,6 +520,7 @@ public class MongoManager implements Manager, Lifecycle {
 
       mongo = new MongoClient(addrs,
           MongoClientOptions.builder()
+              .description("TomcatMongoSession[path=" + path + "]")
               .alwaysUseMBeans(true)
               .connectionsPerHost(connectionsPerHost)
               .build());
@@ -518,7 +530,7 @@ public class MongoManager implements Manager, Lifecycle {
         db.setReadPreference(ReadPreference.secondaryPreferred());
       }
       db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
-      getCollection().ensureIndex(new BasicDBObject("lastmodified", 1));
+      getCollection().createIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getMaxInactiveInterval() * 1000) + " session live time");
     } catch (IOException e) {
       e.printStackTrace();
