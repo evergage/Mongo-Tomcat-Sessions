@@ -411,7 +411,14 @@ public class MongoManager implements Manager, Lifecycle {
       session.setManager(this);
       serializer.deserializeInto(data, session);
 
-      session.setMaxInactiveInterval(-1);
+      if (session.getThisAccessedTimeInternal() + session.getMaxInactiveInterval() * 1000 < System.currentTimeMillis()) {
+        log.fine("Session " + id + " was found in Mongo but expired");
+        StandardSession ret = getNewSession();
+        ret.setId(id);
+        currentSession.set(ret);
+        return ret;
+      }
+
       session.access();
       session.setValid(true);
       session.setNew(false);
