@@ -1,4 +1,4 @@
-/***********************************************************************************************************************
+/*x*********************************************************************************************************************
  *
  * Mongo Tomcat Sessions
  * ==========================================
@@ -23,13 +23,11 @@ package com.dawsonsystems.session;
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 
-import java.util.logging.Logger;
-
 public class MongoSession extends StandardSession {
-  private static Logger log = Logger.getLogger("MongoManager");
+
   private boolean isValid = true;
 
-  public MongoSession(Manager manager) {
+  MongoSession(Manager manager) {
     super(manager);
   }
 
@@ -52,7 +50,6 @@ public class MongoSession extends StandardSession {
         removeAttributeInternal(key, false);
       }
       getManager().remove(this);
-
     }
   }
 
@@ -65,4 +62,5 @@ public class MongoSession extends StandardSession {
   public void setId(String id) {
     this.id = id;
   }
+
 }

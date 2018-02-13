@@ -1,4 +1,4 @@
-/***********************************************************************************************************************
+/*x*********************************************************************************************************************
  *
  * Mongo Tomcat Sessions
  * ==========================================
@@ -25,7 +25,6 @@ import org.apache.catalina.util.CustomObjectInputStream;
 
 import javax.servlet.http.HttpSession;
 import java.io.*;
-
 
 public class JavaSerializer implements Serializer {
   private ClassLoader loader;

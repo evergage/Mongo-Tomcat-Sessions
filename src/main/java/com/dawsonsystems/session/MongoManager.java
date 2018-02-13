@@ -1,4 +1,4 @@
-/***********************************************************************************************************************
+/*x*********************************************************************************************************************
  *
  * Mongo Tomcat Sessions
  * ==========================================
@@ -20,9 +20,18 @@
 
 package com.dawsonsystems.session;
 
-import com.mongodb.*;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+import com.mongodb.ReadPreference;
+import com.mongodb.ServerAddress;
+import com.mongodb.WriteConcern;
+import com.mongodb.WriteResult;
 import org.apache.catalina.*;
-import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
 import java.beans.PropertyChangeListener;
@@ -37,69 +46,62 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MongoManager implements Manager, Lifecycle {
+
   private static Logger log = Logger.getLogger("MongoManager");
-  protected static String host = "localhost";
-  protected static int port = 27017;
-  protected static String database = "sessions";
-  protected static int connectionsPerHost = 5;
-  protected MongoClient mongo;
-  protected DB db;
-  protected boolean slaveOk;
+
+  private static String host = "localhost";
+  private static int port = 27017;
+  private static String database = "sessions";
+  private static int connectionsPerHost = 5;
+
+  private MongoClient mongo;
+  private DB db;
+  private boolean slaveOk;
 
   private MongoSessionTrackerValve trackerValve;
-  private ThreadLocal<StandardSession> currentSession = new ThreadLocal<StandardSession>();
+  private ThreadLocal<StandardSession> currentSession = new ThreadLocal<>();
   private Serializer serializer;
 
   //Either 'kryo' or 'java'
-  private String serializationStrategyClass = "com.dawsonsystems.session.JavaSerializer";
+  private String serializationStrategyClass = JavaSerializer.class.getName();
 
-  private Container container;
+  private Context context;
+  private SessionIdGenerator sessionIdGenerator;
   private int maxInactiveInterval;
   private String localHostName;
 
   @Override
-  public Container getContainer() {
-    return container;
+  public Context getContext() {
+    return context;
   }
 
   @Override
-  public void setContainer(Container container) {
-    this.container = container;
+  public void setContext(Context context) {
+    this.context = context;
   }
 
   @Override
-  public boolean getDistributable() {
-    return false;
+  public SessionIdGenerator getSessionIdGenerator() {
+    return sessionIdGenerator;
   }
 
   @Override
-  public void setDistributable(boolean b) {
-
+  public void setSessionIdGenerator(SessionIdGenerator sessionIdGenerator) {
+    this.sessionIdGenerator = sessionIdGenerator;
   }
 
   @Override
-  public String getInfo() {
-    return "Mongo Session Manager";
+  public void changeSessionId(Session session, String id) {
+    session.setId(id);
   }
 
-  @Override
+  @SuppressWarnings("WeakerAccess")
   public int getMaxInactiveInterval() {
     return maxInactiveInterval;
   }
 
-  @Override
   public void setMaxInactiveInterval(int i) {
     maxInactiveInterval = i;
-  }
-
-  @Override
-  public int getSessionIdLength() {
-    return 37;
-  }
-
-  @Override
-  public void setSessionIdLength(int i) {
-
   }
 
   @Override
@@ -109,7 +111,6 @@ public class MongoManager implements Manager, Lifecycle {
 
   @Override
   public void setSessionCounter(long i) {
-
   }
 
   @Override
@@ -119,7 +120,6 @@ public class MongoManager implements Manager, Lifecycle {
 
   @Override
   public void setMaxActive(int i) {
-
   }
 
   @Override
@@ -134,7 +134,6 @@ public class MongoManager implements Manager, Lifecycle {
 
   @Override
   public void setExpiredSessions(long i) {
-
   }
 
   public int getRejectedSessions() {
@@ -158,12 +157,11 @@ public class MongoManager implements Manager, Lifecycle {
 
   @Override
   public int getSessionMaxAliveTime() {
-    return maxInactiveInterval;
+    return 0;
   }
 
   @Override
   public void setSessionMaxAliveTime(int i) {
-
   }
 
   @Override
@@ -172,13 +170,12 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   public void setSessionAverageAliveTime(int i) {
-
   }
 
-  public void load() throws ClassNotFoundException, IOException {
+  public void load() {
   }
 
-  public void unload() throws IOException {
+  public void unload() {
   }
 
   @Override
@@ -212,13 +209,13 @@ public class MongoManager implements Manager, Lifecycle {
 
   @Override
   public void changeSessionId(Session session) {
-    session.setId(UUID.randomUUID().toString());
+    session.setId(generateSessionId());
   }
 
   @Override
   public Session createEmptySession() {
     MongoSession session = new MongoSession(this);
-    session.setId(UUID.randomUUID().toString());
+    session.setId(generateSessionId());
     session.setMaxInactiveInterval(maxInactiveInterval);
     session.setValid(true);
     session.setCreationTime(System.currentTimeMillis());
@@ -228,14 +225,11 @@ public class MongoManager implements Manager, Lifecycle {
     return session;
   }
 
-  /**
-   * @deprecated
-   */
-  public org.apache.catalina.Session createSession() {
-    return createEmptySession();
+  private String generateSessionId() {
+    return UUID.randomUUID().toString();
   }
 
-  public org.apache.catalina.Session createSession(java.lang.String sessionId) {
+  public Session createSession(java.lang.String sessionId) {
     StandardSession session = (MongoSession) createEmptySession();
 
     log.fine("Created session with id " + session.getIdInternal() + " ( " + sessionId + ")");
@@ -246,7 +240,7 @@ public class MongoManager implements Manager, Lifecycle {
     return session;
   }
 
-  public org.apache.catalina.Session[] findSessions() {
+  public Session[] findSessions() {
     try {
       List<Session> sessions = new ArrayList<Session>();
       for(String sessionId : keys()) {
@@ -258,7 +252,7 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
-  protected org.apache.catalina.session.StandardSession getNewSession() {
+  private StandardSession getNewSession() {
     log.fine("getNewSession()");
     return (MongoSession) createEmptySession();
   }
@@ -270,7 +264,7 @@ public class MongoManager implements Manager, Lifecycle {
       log.severe("Local host not found: " + e);
     }
 
-    for (Valve valve : getContainer().getPipeline().getValves()) {
+    for (Valve valve : getContext().getPipeline().getValves()) {
       if (valve instanceof MongoSessionTrackerValve) {
         trackerValve = (MongoSessionTrackerValve) valve;
         trackerValve.setMongoManager(this);
@@ -280,29 +274,15 @@ public class MongoManager implements Manager, Lifecycle {
     }
     try {
       initSerializer();
-    } catch (ClassNotFoundException e) {
-      log.log(Level.SEVERE, "Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (InstantiationException e) {
-      log.log(Level.SEVERE, "Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (IllegalAccessException e) {
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
       log.log(Level.SEVERE, "Unable to load serializer", e);
       throw new LifecycleException(e);
     }
-    log.info("Will expire sessions after " + getMaxInactiveInterval() + " seconds");
-    initDbConnection(getPath());
+    log.info("Will expire sessions after " + maxInactiveInterval + " seconds");
+    initDbConnection(context.getPath());
   }
 
-  private String getPath() {
-    if (container instanceof StandardContext) {
-      return ((StandardContext) container).getPath();
-    } else {
-      return "<Unknown>";
-    }
-  }
-
-  public void stop() throws LifecycleException {
+  public void stop() {
     if (mongo != null) {
       mongo.close();
     }
@@ -312,6 +292,7 @@ public class MongoManager implements Manager, Lifecycle {
     return loadSession(id);
   }
 
+  @SuppressWarnings("WeakerAccess")
   public static String getHost() {
     return host;
   }
@@ -320,6 +301,7 @@ public class MongoManager implements Manager, Lifecycle {
     MongoManager.host = host;
   }
 
+  @SuppressWarnings("WeakerAccess")
   public static int getPort() {
     return port;
   }
@@ -328,6 +310,7 @@ public class MongoManager implements Manager, Lifecycle {
     MongoManager.port = port;
   }
 
+  @SuppressWarnings("WeakerAccess")
   public static String getDatabase() {
     return database;
   }
@@ -372,7 +355,6 @@ public class MongoManager implements Manager, Lifecycle {
 
     return ret.toArray(new String[ret.size()]);
   }
-
 
   public Session loadSession(String id) throws IOException {
 
@@ -526,7 +508,7 @@ public class MongoManager implements Manager, Lifecycle {
       }
 
       mongo = new MongoClient(addrs,
-          MongoClientOptions.builder()
+                              MongoClientOptions.builder()
               .description("TomcatMongoSession[path=" + path + "]")
               .alwaysUseMBeans(true)
               .connectionsPerHost(connectionsPerHost)
@@ -551,8 +533,8 @@ public class MongoManager implements Manager, Lifecycle {
 
     Loader loader = null;
 
-    if (container != null) {
-      loader = container.getLoader();
+    if (context != null) {
+      loader = context.getLoader();
     }
     ClassLoader classLoader = null;
 
@@ -583,22 +565,23 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   @Override
-  public void init() throws LifecycleException {
+  public void init() {
     // nada
   }
 
   @Override
-  public void destroy() throws LifecycleException {
+  public void destroy() {
     // nada
   }
 
   @Override
   public LifecycleState getState() {
-    return db == null ? LifecycleState.NEW : LifecycleState.STARTED;
+    return (db == null) ? LifecycleState.NEW : LifecycleState.STARTED;
   }
 
   @Override
   public String getStateName() {
     return getState().toString();
   }
+
 }

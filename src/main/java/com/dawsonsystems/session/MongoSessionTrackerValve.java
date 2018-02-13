@@ -1,4 +1,4 @@
-/***********************************************************************************************************************
+/*x*********************************************************************************************************************
  *
  * Mongo Tomcat Sessions
  * ==========================================
@@ -29,9 +29,10 @@ import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-
 public class MongoSessionTrackerValve extends ValveBase {
+
   private static Logger log = Logger.getLogger("MongoSessionValve");
+
   private MongoManager manager;
 
   public void setMongoManager(MongoManager manager) {
@@ -65,4 +66,5 @@ public class MongoSessionTrackerValve extends ValveBase {
         }
     }
   }
+
 }
