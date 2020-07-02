@@ -20,12 +20,15 @@
 
 package com.dawsonsystems.session;
 
+import com.dawsonsystems.session.ClientSSLFromPEMsUtility.SSLContextResponse;
 import com.mongodb.*;
+import com.mongodb.MongoClientOptions.Builder;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -35,6 +38,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.dawsonsystems.session.ClientSSLFromPEMsUtility.sslContextFromPEMs;
 
 public class MongoManager implements Manager, Lifecycle {
   private static Logger log = Logger.getLogger("MongoManager");
@@ -56,6 +61,10 @@ public class MongoManager implements Manager, Lifecycle {
   private Container container;
   private int maxInactiveInterval;
   private String localHostName;
+
+  // Mongo client SSL support directly from PEM bundles
+  private String sslKeyStorePem;
+  private String sslTrustStorePem;
 
   @Override
   public Container getContainer() {
@@ -173,6 +182,22 @@ public class MongoManager implements Manager, Lifecycle {
 
   public void setSessionAverageAliveTime(int i) {
 
+  }
+
+  public String getSslKeyStorePem() {
+    return sslKeyStorePem;
+  }
+
+  public void setSslKeyStorePem(String sslKeyStorePem) {
+    this.sslKeyStorePem = sslKeyStorePem;
+  }
+
+  public String getSslTrustStorePem() {
+    return sslTrustStorePem;
+  }
+
+  public void setSslTrustStorePem(String sslTrustStorePem) {
+    this.sslTrustStorePem = sslTrustStorePem;
   }
 
   public void load() throws ClassNotFoundException, IOException {
@@ -518,12 +543,25 @@ public class MongoManager implements Manager, Lifecycle {
         addrs.add(new ServerAddress(host, getPort()));
       }
 
-      mongo = new MongoClient(addrs,
-          MongoClientOptions.builder()
+      Builder clientOptionsBuilder = MongoClientOptions.builder()
               .description("TomcatMongoSession[path=" + path + "]")
               .alwaysUseMBeans(true)
-              .connectionsPerHost(connectionsPerHost)
-              .build());
+              .connectionsPerHost(connectionsPerHost);
+
+      List<MongoCredential> mongoCredentials = new ArrayList<>();
+
+      if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
+        log.info("Detected Mongo SSL configuration: trust store PEM: " + sslTrustStorePem + ", key store PEM: " + sslKeyStorePem);
+        SSLContextResponse sslResponse = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
+        String rfc2253SubjectDN = sslResponse.subjectPrincipal.getName("RFC2253");
+        mongoCredentials.add(MongoCredential.createMongoX509Credential(rfc2253SubjectDN));
+        clientOptionsBuilder.sslEnabled(true);
+        clientOptionsBuilder.socketFactory(sslResponse.sslContext.getSocketFactory());
+      } else {
+        log.info("Using an unencrypted connection to Mongo");
+      }
+
+      mongo = new MongoClient(addrs,mongoCredentials, clientOptionsBuilder.build());
 
       db = mongo.getDB(getDatabase());
       if (slaveOk) {
@@ -532,7 +570,7 @@ public class MongoManager implements Manager, Lifecycle {
       db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getMaxInactiveInterval() * 1000) + " session live time");
-    } catch (IOException e) {
+    } catch (RuntimeException | IOException e) {
       e.printStackTrace();
       throw new LifecycleException("Error Connecting to Mongo", e);
     }
