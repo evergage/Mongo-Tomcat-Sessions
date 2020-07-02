@@ -23,7 +23,7 @@
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>
-            <artifactId>mongo-java-driver</artifactId>
+            <artifactId>mongodb-driver</artifactId>
             <version>${mongo-java-driver.version}</version>
         </dependency>        
     </dependencies>
@@ -55,7 +55,7 @@
         </plugins>
     </build>
     <properties>
-        <mongo-java-driver.version>3.2.2</mongo-java-driver.version>
+        <mongo-java-driver.version>3.8.3-evg3</mongo-java-driver.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 </project>

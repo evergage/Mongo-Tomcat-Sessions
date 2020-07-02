@@ -20,13 +20,13 @@
 
 package com.dawsonsystems.session;
 
-import com.dawsonsystems.session.ClientSSLFromPEMsUtility.SSLContextResponse;
 import com.mongodb.*;
 import com.mongodb.MongoClientOptions.Builder;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
+import javax.net.ssl.SSLContext;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
@@ -552,16 +552,15 @@ public class MongoManager implements Manager, Lifecycle {
 
       if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
         log.info("Detected Mongo SSL configuration: trust store PEM: " + sslTrustStorePem + ", key store PEM: " + sslKeyStorePem);
-        SSLContextResponse sslResponse = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
-        String rfc2253SubjectDN = sslResponse.subjectPrincipal.getName("RFC2253");
-        mongoCredentials.add(MongoCredential.createMongoX509Credential(rfc2253SubjectDN));
+        SSLContext sslContext = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
         clientOptionsBuilder.sslEnabled(true);
-        clientOptionsBuilder.socketFactory(sslResponse.sslContext.getSocketFactory());
+        clientOptionsBuilder.sslContext(sslContext);
+        mongoCredentials.add(MongoCredential.createMongoX509Credential());
       } else {
         log.info("Using an unencrypted connection to Mongo");
       }
 
-      mongo = new MongoClient(addrs,mongoCredentials, clientOptionsBuilder.build());
+      mongo = new MongoClient(addrs, mongoCredentials, clientOptionsBuilder.build());
 
       db = mongo.getDB(getDatabase());
       if (slaveOk) {

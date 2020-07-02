@@ -3,7 +3,6 @@ package com.dawsonsystems.session;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
-import javax.security.auth.x500.X500Principal;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +36,7 @@ class ClientSSLFromPEMsUtility {
      * @param serverTrustStorePem   path to a bundle of certificate PEMs, which will be trusted by this context
      * @param combinedCertAndKeyPem path to a combined PEM file, containing client private key (unencrypted) and certs
      */
-    public static SSLContextResponse sslContextFromPEMs(File serverTrustStorePem, File combinedCertAndKeyPem) {
+    public static SSLContext sslContextFromPEMs(File serverTrustStorePem, File combinedCertAndKeyPem) {
         if (!serverTrustStorePem.canRead()) {
             throw new IllegalArgumentException("Unable to read server trust store PEM: " + serverTrustStorePem);
         }
@@ -60,11 +59,9 @@ class ClientSSLFromPEMsUtility {
                     KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             keyManagerFactory.init(keystore, "".toCharArray());
 
-            X500Principal subjectPrincipal = ((X509Certificate) keystore.getCertificate(keyAlias)).getSubjectX500Principal();
-
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
-            return new SSLContextResponse(sslContext, subjectPrincipal);
+            return sslContext;
         } catch (GeneralSecurityException | IOException e) {
             throw new IllegalArgumentException(
                     "Failed to read certificates from combined cert and key PEM " + combinedCertAndKeyPem, e);
@@ -133,22 +130,6 @@ class ClientSSLFromPEMsUtility {
         return results.toArray(new X509Certificate[0]);
     }
 
-
-    static class SSLContextResponse {
-        public final SSLContext sslContext;
-        public final X500Principal subjectPrincipal;
-
-        public SSLContextResponse(SSLContext sslContext, X500Principal certificateSubject) {
-            this.sslContext = sslContext;
-            this.subjectPrincipal = certificateSubject;
-        }
-    }
-
-    public static void main(String[] args) {
-        SSLContextResponse contextResponse =
-                ClientSSLFromPEMsUtility.sslContextFromPEMs(new File(args[0]), new File(args[1]));
-        System.out.println("Subject received: " + contextResponse.subjectPrincipal.getName("RFC2253"));
-    }
 }
 
 
