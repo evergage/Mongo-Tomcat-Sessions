@@ -477,6 +477,7 @@ public class MongoManager implements Manager, Lifecycle {
 
       BasicDBObject dbsession = new BasicDBObject();
       dbsession.put("_id", standardsession.getId());
+      dbsession.put("principalId", standardsession.getAttribute("SESSION_APPTEGIC_PRINCIPAL"));
       dbsession.put("data", data);
       if (localHostName != null) {
         dbsession.put("lasthost", localHostName);
