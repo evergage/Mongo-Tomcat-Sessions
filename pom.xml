@@ -6,7 +6,7 @@
 
     <groupId>com.evergage.thirdparty.mongo-store</groupId>
     <artifactId>mongo-store</artifactId>
-    <version>1.6.5-evg2</version>
+    <version>1.6.5-evg3</version>
 
     <licenses>
         <license>
@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.apache.tomcat</groupId>
             <artifactId>tomcat-catalina</artifactId>
-            <version>7.0.104</version>
+            <version>7.0.108</version>
             <type>jar</type>
             <scope>provided</scope>
         </dependency>
