@@ -59,7 +59,6 @@ public class MongoManager extends ManagerBase implements Lifecycle {
   //Either 'kryo' or 'java'
   private String serializationStrategyClass = "com.dawsonsystems.session.JavaSerializer";
 
-  private Container container;
   private String localHostName;
 
   // Mongo client SSL support directly from PEM bundles

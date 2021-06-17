@@ -6,7 +6,7 @@
 
     <groupId>com.evergage.thirdparty.mongo-store</groupId>
     <artifactId>mongo-store</artifactId>
-    <version>2.0.0-evg1</version>
+    <version>1.6.5-evg4</version>
 
     <licenses>
         <license>
