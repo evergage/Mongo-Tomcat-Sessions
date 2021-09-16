@@ -65,6 +65,7 @@ public class MongoManager implements Manager, Lifecycle {
   // Mongo client SSL support directly from PEM bundles
   private String sslKeyStorePem;
   private String sslTrustStorePem;
+  private boolean sslInvalidHostNameAllowed;
 
   @Override
   public Container getContainer() {
@@ -198,6 +199,14 @@ public class MongoManager implements Manager, Lifecycle {
 
   public void setSslTrustStorePem(String sslTrustStorePem) {
     this.sslTrustStorePem = sslTrustStorePem;
+  }
+
+  public boolean isSslInvalidHostNameAllowed() {
+    return sslInvalidHostNameAllowed;
+  }
+
+  public void setSslInvalidHostNameAllowed(boolean sslInvalidHostNameAllowed) {
+    this.sslInvalidHostNameAllowed = sslInvalidHostNameAllowed;
   }
 
   public void load() throws ClassNotFoundException, IOException {
@@ -556,6 +565,7 @@ public class MongoManager implements Manager, Lifecycle {
         SSLContext sslContext = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
         clientOptionsBuilder.sslEnabled(true);
         clientOptionsBuilder.sslContext(sslContext);
+        clientOptionsBuilder.sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
         mongoCredentials.add(MongoCredential.createMongoX509Credential());
       } else {
         log.info("Using an unencrypted connection to Mongo");

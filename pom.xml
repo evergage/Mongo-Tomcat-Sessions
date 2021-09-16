@@ -6,7 +6,7 @@
 
     <groupId>com.evergage.thirdparty.mongo-store</groupId>
     <artifactId>mongo-store</artifactId>
-    <version>1.6.5-evg3</version>
+    <version>1.6.5-evg4</version>
 
     <licenses>
         <license>
@@ -23,7 +23,7 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.evergage.thirdparty.mongodb</groupId>
+            <groupId>org.mongodb</groupId>
             <artifactId>mongo-java-driver</artifactId>
             <version>${mongo-java-driver.version}</version>
         </dependency>        
@@ -56,7 +56,7 @@
         </plugins>
     </build>
     <properties>
-        <mongo-java-driver.version>3.8.3-evg3</mongo-java-driver.version>
+        <mongo-java-driver.version>3.12.8</mongo-java-driver.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 </project>
