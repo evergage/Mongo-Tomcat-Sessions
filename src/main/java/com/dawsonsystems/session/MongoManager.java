@@ -22,6 +22,8 @@ package com.dawsonsystems.session;
 
 import com.mongodb.*;
 import com.mongodb.MongoClientOptions.Builder;
+import com.mongodb.internal.dns.DefaultDnsResolver;
+import com.mongodb.internal.dns.DnsResolver;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
@@ -47,6 +49,7 @@ public class MongoManager implements Manager, Lifecycle {
   protected static int port = 27017;
   protected static String database = "sessions";
   protected static int connectionsPerHost = 5;
+  private static final String MONGODB_SRV_PREFIX = "mongodb+srv://";
   protected MongoClient mongo;
   protected DB db;
   protected boolean slaveOk;
@@ -545,8 +548,19 @@ public class MongoManager implements Manager, Lifecycle {
 
   private void initDbConnection(String path) throws LifecycleException {
     try {
-      String[] hosts = getHost().split(",");
+      // Resolve mongodb+srv:// hostnames, if available
+      if (getHost().startsWith(MONGODB_SRV_PREFIX)) {
+        if (getHost().contains("?")) {
+          throw new RuntimeException(MONGODB_SRV_PREFIX + " connection strings specifying an authentication database or " +
+                  "additional connection parameters are not supported. " + getHost());
+        }
+        String hostnameWithoutPrefix = getHost().substring(MONGODB_SRV_PREFIX.length());
+        DnsResolver resolver = new DefaultDnsResolver();
+        List<String> mongoHosts = resolver.resolveHostFromSrvRecords(hostnameWithoutPrefix);
+        setHost(String.join(",", mongoHosts));
+      }
 
+      String[] hosts = getHost().split(",");
       List<ServerAddress> addrs = new ArrayList<ServerAddress>();
 
       for (String host : hosts) {
