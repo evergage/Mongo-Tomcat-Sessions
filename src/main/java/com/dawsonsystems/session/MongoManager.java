@@ -128,7 +128,6 @@ public class MongoManager extends ManagerBase implements Lifecycle {
   public Session createEmptySession() {
     MongoSession session = new MongoSession(this);
     session.setId(UUID.randomUUID().toString());
-    session.setMaxInactiveInterval(getSessionMaxAliveTime());
     session.setValid(true);
     session.setCreationTime(System.currentTimeMillis());
     session.setNew(true);
