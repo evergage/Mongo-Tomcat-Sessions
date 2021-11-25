@@ -53,7 +53,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
   protected boolean slaveOk;
 
   private MongoSessionTrackerValve trackerValve;
-  private ThreadLocal<StandardSession> currentSession = new ThreadLocal<StandardSession>();
+  private ThreadLocal<StandardSession> currentSession = new ThreadLocal<>();
   private Serializer serializer;
 
   //Either 'kryo' or 'java'
@@ -156,7 +156,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
 
   public org.apache.catalina.Session[] findSessions() {
     try {
-      List<Session> sessions = new ArrayList<Session>();
+      List<Session> sessions = new ArrayList<>();
       for(String sessionId : keys()) {
         sessions.add(loadSession(sessionId));
       }
@@ -205,13 +205,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
     }
     try {
       initSerializer();
-    } catch (ClassNotFoundException e) {
-      log.log(Level.SEVERE, "Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (InstantiationException e) {
-      log.log(Level.SEVERE, "Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (IllegalAccessException e) {
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
       log.log(Level.SEVERE, "Unable to load serializer", e);
       throw new LifecycleException(e);
     }
@@ -223,7 +217,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
 
   private String getPath() {
     if (getContext() instanceof StandardContext) {
-      return ((StandardContext) getContext()).getPath();
+      return getContext().getPath();
     } else {
       return "<Unknown>";
     }
