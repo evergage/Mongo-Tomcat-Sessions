@@ -42,7 +42,7 @@ import org.apache.catalina.session.ManagerBase;
 
 import static com.dawsonsystems.session.ClientSSLFromPEMsUtility.sslContextFromPEMs;
 
-public class MongoManager extends ManagerBase implements Lifecycle {
+public class MongoManager extends ManagerBase {
   private static Logger log = Logger.getLogger("MongoManager");
   protected static String host = "localhost";
   protected static int port = 27017;
@@ -390,7 +390,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
       log.fine(() -> "Updated session with id " + session.getIdInternal());
     } catch (IOException e) {
       log.severe(e.getMessage());
-      e.printStackTrace();
+      log.severe(String.valueOf(e.getStackTrace()));
       throw e;
     } finally {
       currentSession.remove();
@@ -471,7 +471,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getSessionMaxAliveTime() * 1000) + " session live time");
     } catch (RuntimeException | IOException e) {
-      e.printStackTrace();
+      log.severe(String.valueOf(e.getStackTrace()));
       throw new LifecycleException("Error Connecting to Mongo", e);
     }
   }
