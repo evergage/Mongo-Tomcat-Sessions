@@ -132,7 +132,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
     session.setCreationTime(System.currentTimeMillis());
     session.setNew(true);
     currentSession.set(session);
-    log.fine("Created new empty session " + session.getIdInternal());
+    log.fine(() -> "Created new empty session " + session.getIdInternal());
     return session;
   }
 
@@ -146,7 +146,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
   public org.apache.catalina.Session createSession(java.lang.String sessionId) {
     StandardSession session = (MongoSession) createEmptySession();
 
-    log.fine("Created session with id " + session.getIdInternal() + " ( " + sessionId + ")");
+    log.fine(() -> "Created session with id " + session.getIdInternal() + " ( " + sessionId + ")");
     if (sessionId != null) {
       session.setId(sessionId);
     }
@@ -315,14 +315,14 @@ public class MongoManager extends ManagerBase implements Lifecycle {
       }
     }
     try {
-      log.fine("Loading session " + id + " from Mongo");
+      log.fine(() -> "Loading session " + id + " from Mongo");
       BasicDBObject query = new BasicDBObject();
       query.put("_id", id);
 
       DBObject dbsession = getCollection().findOne(query);
 
       if (dbsession == null) {
-        log.fine("Session " + id + " not found in Mongo");
+        log.fine(() -> "Session " + id + " not found in Mongo");
         StandardSession ret = getNewSession();
         ret.setId(id);
         currentSession.set(ret);
@@ -348,7 +348,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
         }
       }
 
-      log.fine("Loaded session id " + id);
+      log.fine(() -> "Loaded session id " + id);
       currentSession.set(session);
       return session;
     } catch (IOException e) {
@@ -362,7 +362,7 @@ public class MongoManager extends ManagerBase implements Lifecycle {
 
   public void save(Session session) throws IOException {
     try {
-      log.fine("Saving session " + session + " into Mongo");
+      log.fine(() -> "Saving session " + session + " into Mongo");
 
       StandardSession standardsession = (MongoSession) session;
 
@@ -387,19 +387,19 @@ public class MongoManager extends ManagerBase implements Lifecycle {
       BasicDBObject query = new BasicDBObject();
       query.put("_id", standardsession.getIdInternal());
       getCollection().update(query, dbsession, true, false);
-      log.fine("Updated session with id " + session.getIdInternal());
+      log.fine(() -> "Updated session with id " + session.getIdInternal());
     } catch (IOException e) {
       log.severe(e.getMessage());
       e.printStackTrace();
       throw e;
     } finally {
       currentSession.remove();
-      log.fine("Session removed from ThreadLocal :" + session.getIdInternal());
+      log.fine(() -> "Session removed from ThreadLocal :" + session.getIdInternal());
     }
   }
 
   public void remove(Session session) {
-    log.fine("Removing session ID : " + session.getId());
+    log.fine(() -> "Removing session ID : " + session.getId());
     BasicDBObject query = new BasicDBObject();
     query.put("_id", session.getId());
 
@@ -422,13 +422,13 @@ public class MongoManager extends ManagerBase implements Lifecycle {
 
     long olderThan = System.currentTimeMillis() - (getSessionMaxAliveTime() * 1000);
 
-    log.fine("Looking for sessions less than for expiry in Mongo : " + olderThan);
+    log.fine(() -> "Looking for sessions less than for expiry in Mongo : " + olderThan);
 
     query.put("lastmodified", new BasicDBObject("$lt", olderThan));
 
     try {
       WriteResult result = getCollection().remove(query);
-      log.fine("Expired sessions : " + result.getN());
+      log.fine(() -> "Expired sessions : " + result.getN());
     } catch (IOException e) {
       log.log(Level.SEVERE, "Error cleaning session in Mongo Session Store", e);
     }
