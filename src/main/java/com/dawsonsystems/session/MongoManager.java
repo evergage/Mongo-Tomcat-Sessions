@@ -22,6 +22,8 @@ package com.dawsonsystems.session;
 
 import com.mongodb.*;
 import com.mongodb.MongoClientOptions.Builder;
+import com.mongodb.internal.dns.DefaultDnsResolver;
+import com.mongodb.internal.dns.DnsResolver;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
@@ -48,6 +50,7 @@ public class MongoManager extends ManagerBase {
   protected static int port = 27017;
   protected static String database = "sessions";
   protected static int connectionsPerHost = 5;
+  private static final String MONGODB_SRV_PREFIX = "mongodb+srv://";
   protected MongoClient mongo;
   protected DB db;
   protected boolean slaveOk;
@@ -64,6 +67,7 @@ public class MongoManager extends ManagerBase {
   // Mongo client SSL support directly from PEM bundles
   private String sslKeyStorePem;
   private String sslTrustStorePem;
+  private boolean sslInvalidHostNameAllowed;
 
   @Override
   public long getSessionCounter() {
@@ -436,8 +440,19 @@ public class MongoManager extends ManagerBase {
 
   private void initDbConnection(String path) throws LifecycleException {
     try {
-      String[] hosts = getHost().split(",");
+      // Resolve mongodb+srv:// hostnames, if available
+      if (getHost().startsWith(MONGODB_SRV_PREFIX)) {
+        if (getHost().contains("?")) {
+          throw new RuntimeException(MONGODB_SRV_PREFIX + " connection strings specifying an authentication database or " +
+                  "additional connection parameters are not supported. " + getHost());
+        }
+        String hostnameWithoutPrefix = getHost().substring(MONGODB_SRV_PREFIX.length());
+        DnsResolver resolver = new DefaultDnsResolver();
+        List<String> mongoHosts = resolver.resolveHostFromSrvRecords(hostnameWithoutPrefix);
+        setHost(String.join(",", mongoHosts));
+      }
 
+      String[] hosts = getHost().split(",");
       List<ServerAddress> addrs = new ArrayList<ServerAddress>();
 
       for (String host : hosts) {
@@ -456,6 +471,7 @@ public class MongoManager extends ManagerBase {
         SSLContext sslContext = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
         clientOptionsBuilder.sslEnabled(true);
         clientOptionsBuilder.sslContext(sslContext);
+        clientOptionsBuilder.sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
         mongoCredentials.add(MongoCredential.createMongoX509Credential());
       } else {
         log.info("Using an unencrypted connection to Mongo");
