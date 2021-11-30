@@ -393,8 +393,7 @@ public class MongoManager extends ManagerBase {
       getCollection().update(query, dbsession, true, false);
       log.fine(() -> "Updated session with id " + session.getIdInternal());
     } catch (IOException e) {
-      log.severe(e.getMessage());
-      log.severe(String.valueOf(e.getStackTrace()));
+      log.log(Level.SEVERE, e, () -> "Failed to save session: " + session);
       throw e;
     } finally {
       currentSession.remove();
@@ -485,9 +484,9 @@ public class MongoManager extends ManagerBase {
       }
       db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
-      log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getSessionMaxAliveTime() * 1000) + " session live time");
+      log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + getSessionMaxAliveTime()  + " seconds max session live time");
     } catch (RuntimeException | IOException e) {
-      log.severe(String.valueOf(e.getStackTrace()));
+      log.log(Level.SEVERE, e, () -> "Error connecting to Mongo: " + host + ':' + database);
       throw new LifecycleException("Error Connecting to Mongo", e);
     }
   }
