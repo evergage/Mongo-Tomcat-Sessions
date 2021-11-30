@@ -196,7 +196,7 @@ public class MongoManager extends ManagerBase {
     try {
       localHostName = InetAddress.getLocalHost().getHostName();
     } catch (UnknownHostException e) {
-      log.severe("Local host not found: " + e);
+      log.log(Level.SEVERE, "Local host not found: ", e);
     }
 
     for (Valve valve : getContext().getPipeline().getValves()) {
@@ -393,7 +393,7 @@ public class MongoManager extends ManagerBase {
       getCollection().update(query, dbsession, true, false);
       log.fine(() -> "Updated session with id " + session.getIdInternal());
     } catch (IOException e) {
-      log.log(Level.SEVERE, e, () -> "Failed to save session: " + session);
+      log.log(Level.SEVERE, "Failed to save session: " + session, e);
       throw e;
     } finally {
       currentSession.remove();
@@ -486,7 +486,7 @@ public class MongoManager extends ManagerBase {
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + getSessionMaxAliveTime()  + " seconds max session live time");
     } catch (RuntimeException | IOException e) {
-      log.log(Level.SEVERE, e, () -> "Error connecting to Mongo: " + host + ':' + database);
+      log.log(Level.SEVERE, "Error connecting to Mongo: " + host + ':' + database, e);
       throw new LifecycleException("Error Connecting to Mongo", e);
     }
   }
