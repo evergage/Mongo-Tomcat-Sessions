@@ -461,7 +461,9 @@ public class MongoManager extends ManagerBase {
       Builder clientOptionsBuilder = MongoClientOptions.builder()
               .description("TomcatMongoSession[path=" + path + "]")
               .alwaysUseMBeans(true)
-              .connectionsPerHost(connectionsPerHost);
+              .connectionsPerHost(connectionsPerHost)
+              .retryReads(false)
+              .retryWrites(false);
 
       List<MongoCredential> mongoCredentials = new ArrayList<>();
 
