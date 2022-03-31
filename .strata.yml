@@ -7,5 +7,5 @@ docker_test_images:
    - dva/sfdc_centos7_java8_build
 unit_tests_command: echo "no tests included"
 production_branch:
-    - 2.0.0-x
+    - 1.6.5.x
 publish_jar_image: dva/sfdc_centos7_java8_build_hypergage
