@@ -573,7 +573,7 @@ public class MongoManager implements Manager, Lifecycle {
       }
       db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
-      log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + TimeUnit.MINUTES.toMillis(context.getSessionTimeout()) + " ms session timeout.");
+      log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + context.getSessionTimeout() + " minutes session timeout.");
     } catch (RuntimeException | IOException e) {
       e.printStackTrace();
       throw new LifecycleException("Error Connecting to Mongo", e);
