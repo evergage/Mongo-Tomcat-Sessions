@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -239,7 +240,7 @@ public class MongoManager implements Manager, Lifecycle {
   public Session createEmptySession() {
     MongoSession session = new MongoSession(this);
     session.setId(getSessionIdGenerator().generateSessionId());
-    session.setMaxInactiveInterval(getSessionMaxAliveTime());
+    session.setMaxInactiveInterval((int) TimeUnit.MINUTES.toSeconds(context.getSessionTimeout()));
     session.setValid(true);
     session.setCreationTime(System.currentTimeMillis());
     session.setNew(true);
@@ -509,7 +510,7 @@ public class MongoManager implements Manager, Lifecycle {
   public void processExpires() {
     BasicDBObject query = new BasicDBObject();
 
-    long olderThan = System.currentTimeMillis() - (getSessionMaxAliveTime() * 1000L);
+    long olderThan = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(context.getSessionTimeout());
 
     log.fine("Looking for sessions less than for expiry in Mongo : " + olderThan);
 
@@ -572,7 +573,7 @@ public class MongoManager implements Manager, Lifecycle {
       }
       db.setWriteConcern(WriteConcern.ACKNOWLEDGED);
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
-      log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + (getSessionMaxAliveTime() * 1000) + " session live time");
+      log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + TimeUnit.MINUTES.toMillis(context.getSessionTimeout()) + " ms session timeout.");
     } catch (RuntimeException | IOException e) {
       e.printStackTrace();
       throw new LifecycleException("Error Connecting to Mongo", e);
