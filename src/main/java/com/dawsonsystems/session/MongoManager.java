@@ -405,14 +405,14 @@ public class MongoManager implements Manager, Lifecycle {
       }
     }
     try {
-      log.fine("Loading session " + id + " from Mongo");
+      log.fine(() -> "Loading session " + id + " from Mongo");
       BasicDBObject query = new BasicDBObject();
       query.put("_id", id);
 
       DBObject dbsession = getCollection().findOne(query);
 
       if (dbsession == null) {
-        log.fine("Session " + id + " not found in Mongo");
+        log.fine(() -> "Session " + id + " not found in Mongo");
         StandardSession ret = getNewSession();
         ret.setId(id);
         currentSession.set(ret);
@@ -438,7 +438,7 @@ public class MongoManager implements Manager, Lifecycle {
         }
       }
 
-      log.fine("Loaded session id " + id);
+      log.fine(() -> "Loaded session id " + id);
       currentSession.set(session);
       return session;
     } catch (IOException e) {
@@ -452,7 +452,7 @@ public class MongoManager implements Manager, Lifecycle {
 
   public void save(Session session) throws IOException {
     try {
-      log.fine("Saving session " + session + " into Mongo");
+      log.fine(() -> "Saving session " + session + " into Mongo");
 
       StandardSession standardsession = (MongoSession) session;
 
@@ -477,19 +477,19 @@ public class MongoManager implements Manager, Lifecycle {
       BasicDBObject query = new BasicDBObject();
       query.put("_id", standardsession.getIdInternal());
       getCollection().update(query, dbsession, true, false);
-      log.fine("Updated session with id " + session.getIdInternal());
+      log.fine(() -> "Updated session with id " + session.getIdInternal());
     } catch (IOException e) {
       log.severe(e.getMessage());
       e.printStackTrace();
       throw e;
     } finally {
       currentSession.remove();
-      log.fine("Session removed from ThreadLocal :" + session.getIdInternal());
+      log.fine(() -> "Session removed from ThreadLocal :" + session.getIdInternal());
     }
   }
 
   public void remove(Session session) {
-    log.fine("Removing session ID : " + session.getId());
+    log.fine(() -> "Removing session ID : " + session.getId());
     BasicDBObject query = new BasicDBObject();
     query.put("_id", session.getId());
 
@@ -512,13 +512,13 @@ public class MongoManager implements Manager, Lifecycle {
 
     long olderThan = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(context.getSessionTimeout());
 
-    log.fine("Looking for sessions less than for expiry in Mongo : " + olderThan);
+    log.fine(() -> "Looking for sessions less than for expiry in Mongo : " + olderThan);
 
     query.put("lastmodified", new BasicDBObject("$lt", olderThan));
 
     try {
       WriteResult result = getCollection().remove(query);
-      log.fine("Expired sessions : " + result.getN());
+      log.fine(() -> "Expired sessions : " + result.getN());
     } catch (IOException e) {
       log.log(Level.SEVERE, "Error cleaning session in Mongo Session Store", e);
     }
@@ -575,7 +575,6 @@ public class MongoManager implements Manager, Lifecycle {
       getCollection().createIndex(new BasicDBObject("lastmodified", 1));
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + context.getSessionTimeout() + " minutes session timeout.");
     } catch (RuntimeException | IOException e) {
-      e.printStackTrace();
       throw new LifecycleException("Error Connecting to Mongo", e);
     }
   }
