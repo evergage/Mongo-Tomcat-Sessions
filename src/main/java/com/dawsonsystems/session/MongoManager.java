@@ -228,12 +228,12 @@ public class MongoManager implements Manager, Lifecycle {
 
   @Override
   public void changeSessionId(Session session) {
-    session.setId(UUID.randomUUID().toString());
+    session.setId(getSessionIdGenerator().generateSessionId());
   }
 
   @Override
   public void changeSessionId(Session session, String newId) {
-    //TODO: Implement
+    session.setId(newId);
   }
 
   @Override
@@ -305,7 +305,7 @@ public class MongoManager implements Manager, Lifecycle {
       log.log(Level.SEVERE, "Unable to load serializer", e);
       throw new LifecycleException(e);
     }
-    log.info("Will expire sessions after " + getSessionMaxAliveTime() + " seconds");
+    log.info("Will expire sessions after " + getContext().getSessionTimeout() + " seconds");
     initDbConnection(getPath());
   }
 

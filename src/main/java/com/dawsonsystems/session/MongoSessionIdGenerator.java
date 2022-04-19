@@ -23,6 +23,7 @@ public class MongoSessionIdGenerator implements SessionIdGenerator {
 
     @Override
     public void setJvmRoute(String jvmRoute) {
+        this.jvmRoute = jvmRoute;
     }
 
     @Override
