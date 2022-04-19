@@ -4,8 +4,8 @@ time_out_mins: 180                                    # (Optional) default shown
 number_of_artifacts_to_keep: 3                        # (Optional) default shown
 compliance_required: false                             # (Optional) default shown
 docker_test_images:
-   - dva/sfdc_centos7_java8_build
+   - dva/sfdc_centos7_java11_build
 unit_tests_command: echo "no tests included"
 production_branch:
-    - 1.6.5.x
-publish_jar_image: dva/sfdc_centos7_java8_build_hypergage
+    - 2.0.0-x
+publish_jar_image: dva/hypergage-jdk11-gradle
