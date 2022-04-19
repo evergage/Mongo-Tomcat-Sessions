@@ -1,8 +1,3 @@
-/*
- * Copyright 2010-2022 salesforce.com, inc.
- * All Rights Reserved. Company Confidential.
- */
-
 package com.dawsonsystems.session;
 
 import org.apache.catalina.SessionIdGenerator;
