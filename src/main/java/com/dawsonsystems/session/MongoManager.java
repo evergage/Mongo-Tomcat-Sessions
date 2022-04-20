@@ -305,7 +305,7 @@ public class MongoManager implements Manager, Lifecycle {
       log.log(Level.SEVERE, "Unable to load serializer", e);
       throw new LifecycleException(e);
     }
-    log.info("Will expire sessions after " + getContext().getSessionTimeout() + " seconds");
+    log.info("Will expire sessions after " + getContext().getSessionTimeout() + " minutes");
     initDbConnection(getPath());
   }
 
