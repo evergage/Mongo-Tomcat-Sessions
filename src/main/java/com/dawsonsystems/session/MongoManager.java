@@ -34,15 +34,19 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.dawsonsystems.session.ClientSSLFromPEMsUtility.sslContextFromPEMs;
+import static com.dawsonsystems.session.ClientSSLUtils.*;
 
 public class MongoManager implements Manager, Lifecycle {
   private static Logger log = Logger.getLogger("MongoManager");
@@ -554,9 +558,8 @@ public class MongoManager implements Manager, Lifecycle {
 
       List<MongoCredential> mongoCredentials = new ArrayList<>();
 
-      if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
-        log.info("Detected Mongo SSL configuration: trust store PEM: " + sslTrustStorePem + ", key store PEM: " + sslKeyStorePem);
-        SSLContext sslContext = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
+      if (isIndividualClientAndPrivateKeyPEMFilesPresent()) {
+        SSLContext sslContext = getIndividualPEMSSLContext();
         clientOptionsBuilder.sslEnabled(true);
         clientOptionsBuilder.sslContext(sslContext);
         clientOptionsBuilder.sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
@@ -576,7 +579,19 @@ public class MongoManager implements Manager, Lifecycle {
       log.info("Connected to Mongo " + host + "/" + database + " for session storage, slaveOk=" + slaveOk + ", " + context.getSessionTimeout() + " minutes session timeout.");
     } catch (RuntimeException | IOException e) {
       throw new LifecycleException("Error Connecting to Mongo", e);
+    } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException |
+             KeyManagementException e) {
+      throw new RuntimeException("Failed to build SSL context.", e);
     }
+  }
+
+  private SSLContext getIndividualPEMSSLContext() throws KeyStoreException, IOException, CertificateException,
+          NoSuchAlgorithmException, UnrecoverableKeyException, KeyManagementException {
+    return ClientSSLUtils.createClientSSLContextFromIndividualPEMs(
+            new File(fetchIdentityCertsPEMPath()),
+            new File(fetchIdentityKeyPEMPath()),
+            new File(fetchTrustStorePath())
+    );
   }
 
   private void initSerializer() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
