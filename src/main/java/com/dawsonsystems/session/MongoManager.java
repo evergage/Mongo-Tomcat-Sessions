@@ -28,6 +28,7 @@ import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
+import javax.naming.InitialContext;
 import javax.net.ssl.SSLContext;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -37,7 +38,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,6 +66,7 @@ public class MongoManager implements Manager, Lifecycle {
   private Context context;
   private String localHostName;
 
+  private String useJndiSslContext;
   // Mongo client SSL support directly from PEM bundles
   private String sslKeyStorePem;
   private String sslTrustStorePem;
@@ -167,6 +169,14 @@ public class MongoManager implements Manager, Lifecycle {
 
   }
 
+  public String getUseJndiSslContext() {
+    return useJndiSslContext;
+  }
+
+  public void setUseJndiSslContext(String useJndiSslContext) {
+    this.useJndiSslContext = useJndiSslContext;
+  }
+
   public String getSslKeyStorePem() {
     return sslKeyStorePem;
   }
@@ -252,11 +262,11 @@ public class MongoManager implements Manager, Lifecycle {
   /**
    * @deprecated
    */
-  public org.apache.catalina.Session createSession() {
+  public Session createSession() {
     return createEmptySession();
   }
 
-  public org.apache.catalina.Session createSession(java.lang.String sessionId) {
+  public Session createSession(String sessionId) {
     StandardSession session = (MongoSession) createEmptySession();
 
     log.fine("Created session with id " + session.getIdInternal() + " ( " + sessionId + ")");
@@ -267,7 +277,7 @@ public class MongoManager implements Manager, Lifecycle {
     return session;
   }
 
-  public org.apache.catalina.Session[] findSessions() {
+  public Session[] findSessions() {
     try {
       List<Session> sessions = new ArrayList<Session>();
       for(String sessionId : keys()) {
@@ -279,7 +289,7 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
-  protected org.apache.catalina.session.StandardSession getNewSession() {
+  protected StandardSession getNewSession() {
     log.fine("getNewSession()");
     return (MongoSession) createEmptySession();
   }
@@ -524,6 +534,21 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
+  public static Optional<SSLContext> fetchMongoSSLContextFromJndi() {
+    try {
+      InitialContext initCtx = new InitialContext();
+      Optional<SSLContext> sslContext = (Optional<SSLContext>) initCtx.lookup("java:comp/env/bean/SSLContext");
+
+      if (sslContext.isEmpty()) {
+        log.fine(() -> "sslContext empty or not present");
+      }
+
+      return sslContext;
+    } catch (Exception e) {
+      throw new RuntimeException("Error looking up: ", e);
+    }
+  }
+
   private void initDbConnection(String path) throws LifecycleException {
     try {
       // Resolve mongodb+srv:// hostnames, if available
@@ -552,13 +577,18 @@ public class MongoManager implements Manager, Lifecycle {
               .retryReads(false)
               .retryWrites(false);
 
-      List<MongoCredential> mongoCredentials = new ArrayList<>();
-
-      if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
+      Optional<SSLContext> sslContext = null;
+      if (Boolean.parseBoolean(useJndiSslContext)) {
+        sslContext = fetchMongoSSLContextFromJndi();
+      } else if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
         log.info("Detected Mongo SSL configuration: trust store PEM: " + sslTrustStorePem + ", key store PEM: " + sslKeyStorePem);
-        SSLContext sslContext = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
+        sslContext = Optional.of(sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem)));
+      }
+
+      List<MongoCredential> mongoCredentials = new ArrayList<>();
+      if (sslContext != null && sslContext.isPresent()) {
         clientOptionsBuilder.sslEnabled(true);
-        clientOptionsBuilder.sslContext(sslContext);
+        clientOptionsBuilder.sslContext(sslContext.get());
         clientOptionsBuilder.sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
         mongoCredentials.add(MongoCredential.createMongoX509Credential());
       } else {
