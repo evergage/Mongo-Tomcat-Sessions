@@ -577,7 +577,7 @@ public class MongoManager implements Manager, Lifecycle {
               .retryReads(false)
               .retryWrites(false);
 
-      Optional<SSLContext> sslContext = null;
+      Optional<SSLContext> sslContext = Optional.empty();
       if (Boolean.parseBoolean(useJndiSslContext)) {
         sslContext = fetchMongoSSLContextFromJndi();
       } else if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
@@ -586,10 +586,11 @@ public class MongoManager implements Manager, Lifecycle {
       }
 
       List<MongoCredential> mongoCredentials = new ArrayList<>();
-      if (sslContext != null && sslContext.isPresent()) {
-        clientOptionsBuilder.sslEnabled(true);
-        clientOptionsBuilder.sslContext(sslContext.get());
-        clientOptionsBuilder.sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
+      if (sslContext.isPresent()) {
+        clientOptionsBuilder
+                .sslEnabled(true)
+                .sslContext(sslContext.get())
+                .sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
         mongoCredentials.add(MongoCredential.createMongoX509Credential());
       } else {
         log.info("Using an unencrypted connection to Mongo");
