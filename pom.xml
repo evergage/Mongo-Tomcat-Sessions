@@ -6,7 +6,11 @@
 
     <groupId>com.evergage.thirdparty.mongo-store</groupId>
     <artifactId>mongo-store</artifactId>
+<<<<<<< Updated upstream
     <version>1.6.5-evg4</version>
+=======
+    <version>2.0.0-evg3</version>
+>>>>>>> Stashed changes
 
     <licenses>
         <license>
