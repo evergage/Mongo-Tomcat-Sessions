@@ -28,6 +28,7 @@ import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
 
+import javax.naming.InitialContext;
 import javax.net.ssl.SSLContext;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -37,7 +38,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,6 +66,7 @@ public class MongoManager implements Manager, Lifecycle {
   private Context context;
   private String localHostName;
 
+  private String useJndiSslContext;
   // Mongo client SSL support directly from PEM bundles
   private String sslKeyStorePem;
   private String sslTrustStorePem;
@@ -165,6 +167,14 @@ public class MongoManager implements Manager, Lifecycle {
 
   public void setSessionAverageAliveTime(int i) {
 
+  }
+
+  public String getUseJndiSslContext() {
+    return useJndiSslContext;
+  }
+
+  public void setUseJndiSslContext(String useJndiSslContext) {
+    this.useJndiSslContext = useJndiSslContext;
   }
 
   public String getSslKeyStorePem() {
@@ -524,6 +534,21 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
+  public static Optional<SSLContext> fetchMongoSSLContextFromJndi() {
+    try {
+      InitialContext initCtx = new InitialContext();
+      Optional<SSLContext> sslContext = (Optional<SSLContext>) initCtx.lookup("java:comp/env/bean/SSLContext");
+
+      if (sslContext.isEmpty()) {
+        log.fine(() -> "sslContext empty or not present");
+      }
+
+      return sslContext;
+    } catch (Exception e) {
+      throw new RuntimeException("Error looking up SSLContext from JNDI: ", e);
+    }
+  }
+
   private void initDbConnection(String path) throws LifecycleException {
     try {
       // Resolve mongodb+srv:// hostnames, if available
@@ -552,14 +577,20 @@ public class MongoManager implements Manager, Lifecycle {
               .retryReads(false)
               .retryWrites(false);
 
-      List<MongoCredential> mongoCredentials = new ArrayList<>();
-
-      if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
+      Optional<SSLContext> sslContext = Optional.empty();
+      if (Boolean.parseBoolean(useJndiSslContext)) {
+        sslContext = fetchMongoSSLContextFromJndi();
+      } else if (sslTrustStorePem != null && sslTrustStorePem.length() > 0 && sslKeyStorePem != null && sslKeyStorePem.length() > 0) {
         log.info("Detected Mongo SSL configuration: trust store PEM: " + sslTrustStorePem + ", key store PEM: " + sslKeyStorePem);
-        SSLContext sslContext = sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem));
-        clientOptionsBuilder.sslEnabled(true);
-        clientOptionsBuilder.sslContext(sslContext);
-        clientOptionsBuilder.sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
+        sslContext = Optional.of(sslContextFromPEMs(new File(sslTrustStorePem), new File(sslKeyStorePem)));
+      }
+
+      List<MongoCredential> mongoCredentials = new ArrayList<>();
+      if (sslContext.isPresent()) {
+        clientOptionsBuilder
+                .sslEnabled(true)
+                .sslContext(sslContext.get())
+                .sslInvalidHostNameAllowed(sslInvalidHostNameAllowed);
         mongoCredentials.add(MongoCredential.createMongoX509Credential());
       } else {
         log.info("Using an unencrypted connection to Mongo");
