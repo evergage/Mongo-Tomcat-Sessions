@@ -537,7 +537,7 @@ public class MongoManager implements Manager, Lifecycle {
   public static Optional<SSLContext> fetchMongoSSLContextFromJndi() {
     try {
       InitialContext initCtx = new InitialContext();
-      Optional<SSLContext> sslContext = (Optional<SSLContext>) initCtx.lookup("java:comp/env/bean/SSLContext");
+      Optional<SSLContext> sslContext = (Optional<SSLContext>) initCtx.lookup("java:comp/env/bean/MongoSSLContext");
 
       if (sslContext.isEmpty()) {
         log.fine(() -> "sslContext empty or not present");
