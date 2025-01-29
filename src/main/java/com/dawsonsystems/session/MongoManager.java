@@ -334,7 +334,7 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   public Session findSession(String id) throws IOException {
-    return loadSession(id);
+    return findSessionInMongo(id);
   }
 
   public static String getHost() {
@@ -399,6 +399,41 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
 
+  private StandardSession findSessionInMongo(String id) throws IOException {
+    try {
+      log.fine(() -> "Loading session " + id + " from Mongo");
+      BasicDBObject query = new BasicDBObject();
+      query.put("_id", id);
+
+      DBObject dbsession = getCollection().findOne(query);
+
+      if (dbsession == null) {
+        return null;
+      }
+
+      byte[] data = (byte[]) dbsession.get("data");
+
+      StandardSession session = (MongoSession) createEmptySession();
+      session.setId(id);
+      session.setManager(this);
+      serializer.deserializeInto(data, session);
+
+      session.setMaxInactiveInterval(-1);
+      session.access();
+      session.setValid(true);
+      session.setNew(false);
+
+      return session;
+
+    } catch (IOException e) {
+      log.severe(e.getMessage());
+      throw e;
+    } catch (ClassNotFoundException ex) {
+      log.log(Level.SEVERE, "Unable to deserialize session ", ex);
+      throw new IOException("Unable to deserializeInto session", ex);
+    }
+  }
+
   public Session loadSession(String id) throws IOException {
 
     if (id == null || id.length() == 0) {
@@ -414,50 +449,24 @@ public class MongoManager implements Manager, Lifecycle {
         currentSession.remove();
       }
     }
-    try {
-      log.fine(() -> "Loading session " + id + " from Mongo");
-      BasicDBObject query = new BasicDBObject();
-      query.put("_id", id);
 
-      DBObject dbsession = getCollection().findOne(query);
-
-      if (dbsession == null) {
-        log.fine(() -> "Session " + id + " not found in Mongo");
-        StandardSession ret = getNewSession();
-        ret.setId(id);
-        currentSession.set(ret);
-        return ret;
-      }
-
-      byte[] data = (byte[]) dbsession.get("data");
-
-      session = (MongoSession) createEmptySession();
+    session = findSessionInMongo(id);
+    if (session == null) {
+      log.fine(() -> "Session " + id + " not found in Mongo. Creating a new session.");
+      session = getNewSession();
       session.setId(id);
-      session.setManager(this);
-      serializer.deserializeInto(data, session);
-
-      session.setMaxInactiveInterval(-1);
-      session.access();
-      session.setValid(true);
-      session.setNew(false);
-
-      if (log.isLoggable(Level.FINE)) {
-        log.fine("Session Contents [" + session.getId() + "]:");
-        for (Object name : Collections.list(session.getAttributeNames())) {
-          log.fine("  " + name);
-        }
-      }
-
-      log.fine(() -> "Loaded session id " + id);
-      currentSession.set(session);
-      return session;
-    } catch (IOException e) {
-      log.severe(e.getMessage());
-      throw e;
-    } catch (ClassNotFoundException ex) {
-      log.log(Level.SEVERE, "Unable to deserialize session ", ex);
-      throw new IOException("Unable to deserializeInto session", ex);
     }
+
+    if (log.isLoggable(Level.FINE)) {
+      log.fine("Session Contents [" + session.getId() + "]:");
+      for (Object name : Collections.list(session.getAttributeNames())) {
+        log.fine("  " + name);
+      }
+    }
+
+    log.fine(() -> "Loaded session id " + id);
+    currentSession.set(session);
+    return session;
   }
 
   public void save(Session session) throws IOException {
