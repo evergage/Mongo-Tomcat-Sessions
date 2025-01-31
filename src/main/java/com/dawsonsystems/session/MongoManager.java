@@ -237,11 +237,6 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   @Override
-  public void changeSessionId(Session session) {
-    session.setId(getSessionIdGenerator().generateSessionId());
-  }
-
-  @Override
   public void changeSessionId(Session session, String newId) {
     session.setId(newId);
   }
@@ -645,6 +640,26 @@ public class MongoManager implements Manager, Lifecycle {
   @Override
   public boolean willAttributeDistribute(String name, Object value) {
     return true;
+  }
+
+  @Override
+  public void setNotifyBindingListenerOnUnchangedValue(boolean notifyBindingListenerOnUnchangedValue) {
+    throw new UnsupportedOperationException("setNotifyBindingListenerOnUnchangedValue is not supported");
+  }
+
+  @Override
+  public void setNotifyAttributeListenerOnUnchangedValue(boolean notifyAttributeListenerOnUnchangedValue) {
+    throw new UnsupportedOperationException("setNotifyAttributeListenerOnUnchangedValue is not supported");
+  }
+
+  @Override
+  public void setSessionActivityCheck(boolean sessionActivityCheck) {
+    throw new UnsupportedOperationException("setSessionActivityCheck is not supported");
+  }
+
+  @Override
+  public void setSessionLastAccessAtStart(boolean sessionLastAccessAtStart) {
+    throw new UnsupportedOperationException("setSessionLastAccessAtStart is not supported");
   }
 
   @Override
