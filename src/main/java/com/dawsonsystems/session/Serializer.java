@@ -20,7 +20,7 @@
 
 package com.dawsonsystems.session;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
 public interface Serializer {
