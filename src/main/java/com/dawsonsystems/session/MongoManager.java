@@ -402,6 +402,11 @@ public class MongoManager implements Manager, Lifecycle {
   private StandardSession findSessionInMongo(String id) throws IOException {
     try {
       log.fine(() -> "Loading session " + id + " from Mongo");
+
+      if (id == null || id.isEmpty()) {
+        return null;
+      }
+
       BasicDBObject query = new BasicDBObject();
       query.put("_id", id);
 
