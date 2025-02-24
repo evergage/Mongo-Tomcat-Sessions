@@ -412,6 +412,10 @@ public class MongoManager implements Manager, Lifecycle {
       }
 
       byte[] data = (byte[]) dbsession.get("data");
+      if (dbsession.get("data") == null) {
+        log.log(Level.WARNING, "Session object found in mongo for ID " + id + " but 'data' field was NULL");
+        return null;
+      }
 
       StandardSession session = (MongoSession) createEmptySession();
       session.setId(id);
