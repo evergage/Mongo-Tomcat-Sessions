@@ -443,7 +443,7 @@ public class MongoManager implements Manager, Lifecycle {
     }
   }
 
-  public Session loadSession(String id) throws IOException {
+  private Session loadSession(String id) throws IOException {
 
     if (id == null || id.length() == 0) {
       return createEmptySession();
