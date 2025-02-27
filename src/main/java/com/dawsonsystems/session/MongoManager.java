@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -447,7 +448,7 @@ public class MongoManager implements Manager, Lifecycle {
 
   private Session loadSession(String id) throws IOException {
 
-    if (id == null || id.length() == 0) {
+    if (id == null || id.isEmpty()) {
       return createEmptySession();
     }
 
@@ -469,11 +470,8 @@ public class MongoManager implements Manager, Lifecycle {
     }
 
     if (log.isLoggable(Level.FINE)) {
-      log.fine("Session Contents [" + clipSessionId(session.getId()) + "]:");
-      var names = session.getAttributeNames();
-      while (names.hasMoreElements()) {
-        log.fine("  " + names.nextElement());
-      }
+      log.fine("Session Contents [" + clipSessionId(session.getId()) + "] - " +
+        String.join(", ", Collections.list(session.getAttributeNames())));
     }
 
     log.fine(() -> "Loaded session id " + clipSessionId(id));
@@ -511,7 +509,6 @@ public class MongoManager implements Manager, Lifecycle {
       log.fine(() -> "Updated session with id " + session.getIdInternal());
     } catch (IOException e) {
       log.severe(e.getMessage());
-      e.printStackTrace();
       throw e;
     } finally {
       currentSession.remove();
