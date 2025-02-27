@@ -24,6 +24,7 @@ import com.mongodb.*;
 import com.mongodb.MongoClientOptions.Builder;
 import com.mongodb.internal.dns.DefaultDnsResolver;
 import com.mongodb.internal.dns.DnsResolver;
+import com.mongodb.lang.Nullable;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.session.StandardSession;
@@ -269,7 +270,7 @@ public class MongoManager implements Manager, Lifecycle {
   public org.apache.catalina.Session createSession(java.lang.String sessionId) {
     StandardSession session = (MongoSession) createEmptySession();
 
-    log.fine("Created session with id " + session.getIdInternal() + " ( " + sessionId + ")");
+    log.fine("Created session with id " + session.getIdInternal() + " ( " + clipSessionId(sessionId) + ")");
     if (sessionId != null) {
       session.setId(sessionId);
     }
@@ -401,46 +402,47 @@ public class MongoManager implements Manager, Lifecycle {
 
   private StandardSession findSessionInMongo(String id) throws IOException {
     try {
-      log.fine(() -> "Loading session " + id + " from Mongo");
+      log.fine(() -> "Loading session " + clipSessionId(id) + " from Mongo");
 
       if (id == null || id.isEmpty()) {
         return null;
       }
 
-      BasicDBObject query = new BasicDBObject();
-      query.put("_id", id);
-
+      BasicDBObject query = new BasicDBObject("_id", id);
       DBObject dbsession = getCollection().findOne(query);
-
       if (dbsession == null) {
         return null;
       }
 
       byte[] data = (byte[]) dbsession.get("data");
-      if (dbsession.get("data") == null) {
-        log.log(Level.WARNING, "Session object found in mongo for ID " + id + " but 'data' field was NULL");
+      if (data == null) {
+        log.log(Level.WARNING, "Session object found in mongo for ID " + clipSessionId(id) + " but 'data' field was NULL");
         return null;
       }
 
-      StandardSession session = (MongoSession) createEmptySession();
-      session.setId(id);
-      session.setManager(this);
-      serializer.deserializeInto(data, session);
-
-      session.setMaxInactiveInterval(-1);
-      session.access();
-      session.setValid(true);
-      session.setNew(false);
-
-      return session;
+      return deserializePersistedSession(id, data);
 
     } catch (IOException e) {
-      log.severe(e.getMessage());
+      log.log(Level.SEVERE, "Failed to load session from Mongo", e);
       throw e;
     } catch (ClassNotFoundException ex) {
       log.log(Level.SEVERE, "Unable to deserialize session ", ex);
       throw new IOException("Unable to deserializeInto session", ex);
     }
+  }
+
+  private StandardSession deserializePersistedSession(String id, byte[] data) throws IOException, ClassNotFoundException {
+    StandardSession session = (MongoSession) createEmptySession();
+    session.setId(id);
+    session.setManager(this);
+    serializer.deserializeInto(data, session);
+
+    session.setMaxInactiveInterval(-1);
+    session.access();
+    session.setValid(true);
+    session.setNew(false);
+
+    return session;
   }
 
   private Session loadSession(String id) throws IOException {
@@ -461,19 +463,20 @@ public class MongoManager implements Manager, Lifecycle {
 
     session = findSessionInMongo(id);
     if (session == null) {
-      log.fine(() -> "Session " + id + " not found in Mongo. Creating a new session.");
+      log.fine(() -> "Session " + clipSessionId(id) + " not found in Mongo. Creating a new session.");
       session = getNewSession();
       session.setId(id);
     }
 
     if (log.isLoggable(Level.FINE)) {
-      log.fine("Session Contents [" + session.getId() + "]:");
-      for (Object name : Collections.list(session.getAttributeNames())) {
-        log.fine("  " + name);
+      log.fine("Session Contents [" + clipSessionId(session.getId()) + "]:");
+      var names = session.getAttributeNames();
+      while (names.hasMoreElements()) {
+        log.fine("  " + names.nextElement());
       }
     }
 
-    log.fine(() -> "Loaded session id " + id);
+    log.fine(() -> "Loaded session id " + clipSessionId(id));
     currentSession.set(session);
     return session;
   }
@@ -485,7 +488,7 @@ public class MongoManager implements Manager, Lifecycle {
       StandardSession standardsession = (MongoSession) session;
 
       if (log.isLoggable(Level.FINE)) {
-        log.fine("Session Contents [" + session.getId() + "]:");
+        log.fine("Session Contents [" + clipSessionId(session.getId()) + "]:");
         for (Object name : Collections.list(standardsession.getAttributeNames())) {
           log.fine("  " + name);
         }
@@ -517,7 +520,7 @@ public class MongoManager implements Manager, Lifecycle {
   }
 
   public void remove(Session session) {
-    log.fine(() -> "Removing session ID : " + session.getId());
+    log.fine(() -> "Removing session ID : " + clipSessionId(session.getId()));
     BasicDBObject query = new BasicDBObject();
     query.put("_id", session.getId());
 
@@ -565,6 +568,12 @@ public class MongoManager implements Manager, Lifecycle {
     } catch (Exception e) {
       throw new RuntimeException("Error looking up SSLContext from JNDI: ", e);
     }
+  }
+
+  private static String clipSessionId(String sessionId) {
+    return (sessionId == null || sessionId.length() <= 7)
+            ? sessionId
+            : sessionId.substring(0, 7);
   }
 
   private void initDbConnection(String path) throws LifecycleException {
