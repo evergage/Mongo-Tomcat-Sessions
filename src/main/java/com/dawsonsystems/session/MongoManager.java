@@ -271,7 +271,7 @@ public class MongoManager implements Manager, Lifecycle {
   public org.apache.catalina.Session createSession(java.lang.String sessionId) {
     StandardSession session = (MongoSession) createEmptySession();
 
-    log.fine("Created session with id " + session.getIdInternal() + " ( " + clipSessionId(sessionId) + ")");
+    log.fine(() -> "Created session with id " + session.getIdInternal() + " ( " + clipSessionId(sessionId) + ")");
     if (sessionId != null) {
       session.setId(sessionId);
     }
@@ -452,17 +452,17 @@ public class MongoManager implements Manager, Lifecycle {
       return createEmptySession();
     }
 
-    StandardSession session = currentSession.get();
+    StandardSession cachedSession = currentSession.get();
 
-    if (session != null) {
-      if (id.equals(session.getId())) {
-        return session;
+    if (cachedSession != null) {
+      if (id.equals(cachedSession.getId())) {
+        return cachedSession;
       } else {
         currentSession.remove();
       }
     }
 
-    session = findSessionInMongo(id);
+    StandardSession session = findSessionInMongo(id);
     if (session == null) {
       log.fine(() -> "Session " + clipSessionId(id) + " not found in Mongo. Creating a new session.");
       session = getNewSession();
@@ -474,7 +474,6 @@ public class MongoManager implements Manager, Lifecycle {
         String.join(", ", Collections.list(session.getAttributeNames())));
     }
 
-    log.fine(() -> "Loaded session id " + clipSessionId(id));
     currentSession.set(session);
     return session;
   }
@@ -485,12 +484,8 @@ public class MongoManager implements Manager, Lifecycle {
 
       StandardSession standardsession = (MongoSession) session;
 
-      if (log.isLoggable(Level.FINE)) {
-        log.fine("Session Contents [" + clipSessionId(session.getId()) + "]:");
-        for (Object name : Collections.list(standardsession.getAttributeNames())) {
-          log.fine("  " + name);
-        }
-      }
+      log.fine(() ->"Session Contents [" + clipSessionId(session.getId()) + "] - " +
+              String.join(", ", Collections.list(standardsession.getAttributeNames())));
 
       byte[] data = serializer.serializeFrom(standardsession);
 
